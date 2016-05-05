@@ -1,28 +1,44 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
 
-void main(int argc, char *argv)
+void main(int argc, char *argv[])
 {
 	DIR *d;
 	struct dirent *dir;
+	FILE *fp;			//file
+	char* temp = argv[1];		//used for string
+	struct stat fileStat;
+	struct passwd *pw=getpwuid(getuid());	//passwd struct
+	
 	if(argc == 1)
 	{
-		printf("here\n");
 		d = opendir(".");
 	}else
 	{
-		char *name = "~/"+argv[1];
-		printf("%s\n", &argv[1]);
-		d = opendir(name);
+		char *name = pw->pw_dir;	//gets home directory
+		int size1 = sizeof(name)/sizeof(name[0]);
+		int size2 = sizeof(temp)/sizeof(temp[0]);
+		int max = size1+size2+1;
+		
+		char arr[max];
+		arr[0] = '\0';
+		
+		strcat(arr, name);
+		strcat(arr, "/");
+		strcat(arr, temp);
+		d = opendir(arr);
 	}
 	if(d)
 	{
 		while((dir = readdir(d)) != NULL)
 		{
-			struct stat fileStat;
 			if(stat(dir->d_name,&fileStat) < 0)
 			
 
