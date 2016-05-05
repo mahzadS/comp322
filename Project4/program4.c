@@ -1,3 +1,6 @@
+//#define True 1
+//#define False 0
+
 #include <unistd.h>
 #include <dirent.h>
 #include <stdio.h>
@@ -16,6 +19,14 @@ void main(int argc, char *argv[])
 	char* temp = argv[1];		//used for string
 	struct stat fileStat;
 	struct passwd *pw=getpwuid(getuid());	//passwd struct
+	
+	int flag = false
+	
+	char* check = argv[0];
+	while(*check)
+	{
+		
+	}
 	
 	if(argc == 1)
 	{
