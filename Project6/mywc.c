@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 struct file_info
 {
@@ -12,7 +14,6 @@ struct file_info
 	int words;
 	int spaces;
 	int characters;
-	
 };
 typedef struct file_info FILE_INFO;
 
@@ -44,10 +45,18 @@ void main(int argc, char *argv[])
 	int i = 0;
 	int optc;
 	int count = 0;
-	char *files_from = NULL;
 	
-	int pd[2];
-	pipe(pd);
+	//new stuff
+	int values[5];
+	int fd[2];
+	int pid;
+	int ret = pipe(fd);
+	
+	if(ret == -1)
+	{
+		perror("Pipe creation failed\n");
+		exit(-1);
+	}
 	
 	if(argc == 1)
 	{
@@ -85,20 +94,48 @@ void main(int argc, char *argv[])
 	
 	while(argv[optind] != '\0')
 	{
-		if((fp = fopen(argv[optind], "r")) == NULL)
+		pid = fork();
+		if(pid == 0)
 		{
-			printf("wc: can't open %s\n", argv[i]);
+			if((fp = fopen(argv[optind], "r")) == NULL)
+			{
+				printf("wc: can't open %s\n", argv[i]);
+			}else
+			{
+				filecopy(fp);
+				print(argv[optind],fi);
+				
+				values[0] = fi.lines;
+				values[1] = fi.max_line_length;
+				values[2] = fi.words;
+				values[3] = fi.spaces;
+				values[4] = fi.characters;
+				
+				//write values to pipe
+				write(fd[1], &values, sizeof(values));
+				
+				fclose(fp);
+				exit(0);
+			}
 		}else
 		{
-			filecopy(fp);
-			print(argv[optind],fi);
-			fclose(fp);
-			count++;
+			wait(NULL);
+			if(strlen(argv[optind])<= 4)
+				printf("\t");
+			printf("\tPID: %d\n",pid);
+			//parent process read from pipe
+			read(fd[0], &values, sizeof(values));
+			
+			total.lines 			+= values[0];
+			total.max_line_length 	+= values[1];
+			total.words 			+= values[2];
+			total.spaces 			+= values[3];
+			total.characters 		+= values[4];
 		}
 		optind++;
 	}
 	
-	if(count>1)
+	if(argc > 1)
 	{
 		print("total", total);
 	}
@@ -110,25 +147,27 @@ void print(char *name, FILE_INFO foo)
 	{
 		if(po.l)
 		{
-			printf("%3d ",foo.lines);
+			printf("%5d ",foo.lines);
 		}
 		if(po.w)
 		{
-			printf("%3d ",foo.words);
+			printf("%5d ",foo.words);
 		}
 		if(po.c)
 		{
-			printf("%3d ", foo.characters);
+			printf("%5d ", foo.characters);
 		}
 		if(po.L)
 		{
-			printf("%4d ", foo.max_line_length);
+			printf("%5d ", foo.max_line_length);
 		}
 	}else
 	{
-		printf("%3d %3d %3d ", foo.lines,foo.words,foo.characters);
+		printf("%5d %5d %5d ", foo.lines,foo.words,foo.characters);
 	}
-	printf("%s\n", name);
+	printf("%s", name);
+	if(name == "total")
+		printf("\n");
 }
 
 void filecopy(FILE *fp)
@@ -170,10 +209,4 @@ void filecopy(FILE *fp)
 		last = c;
 	}
 	fi.characters = i;
-
-	total.max_line_length += fi.max_line_length;
-	total.lines += fi.lines;
-	total.words += fi.words;
-	total.spaces += fi.spaces;
-	total.characters += fi.characters;
 }
