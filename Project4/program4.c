@@ -20,12 +20,23 @@ void main(int argc, char *argv[])
 	struct stat fileStat;
 	struct passwd *pw=getpwuid(getuid());	//passwd struct
 	
-	int flag = false
+	int flag = false;
+	const char slash = "/";
 	
 	char* check = argv[0];
 	while(*check)
 	{
-		
+		if(strchr(slash, *check))
+			flag = true;
+		check++;
+	}
+	
+	if(flag)
+	{
+		printf("It worked\n");
+	}else
+	{
+		printf("It didn't work");
 	}
 	
 	if(argc == 1)
