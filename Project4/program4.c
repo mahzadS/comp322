@@ -1,84 +1,87 @@
-//#define True 1
-//#define False 0
-
-#include <unistd.h>
-#include <dirent.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <pwd.h>
-#include <grp.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <string.h>
 
-void main(int argc, char *argv[])
+int main(int argc, char *argv[]) 
 {
-	DIR *d;
-	struct dirent *dir;
-	FILE *fp;			//file
-	char* temp = argv[1];		//used for string
-	struct stat fileStat;
-	struct passwd *pw=getpwuid(getuid());	//passwd struct
-	
-	int flag = false;
-	const char slash = "/";
-	
-	char* check = argv[0];
-	while(*check)
-	{
-		if(strchr(slash, *check))
-			flag = true;
-		check++;
-	}
-	
-	if(flag)
-	{
-		printf("It worked\n");
-	}else
-	{
-		printf("It didn't work");
-	}
-	
-	if(argc == 1)
-	{
-		d = opendir(".");
-	}else
-	{
-		char *name = pw->pw_dir;	//gets home directory
-		int size1 = sizeof(name)/sizeof(name[0]);
-		int size2 = sizeof(temp)/sizeof(temp[0]);
-		int max = size1+size2+1;
-		
-		char arr[max];
-		arr[0] = '\0';
-		
-		strcat(arr, name);
-		strcat(arr, "/");
-		strcat(arr, temp);
-		d = opendir(arr);
-	}
-	if(d)
-	{
-		while((dir = readdir(d)) != NULL)
-		{
-			if(stat(dir->d_name,&fileStat) < 0)
-			
+  struct stat buf;
+  struct passwd *passwd;
+  char *file, *home;
+  uid_t uid; 
+  gid_t gid;
+  
+  passwd = getpwuid(getuid());
+  uid = getuid();
+  gid = getgid();
 
-			//prints permissions
-			printf( (S_ISDIR(fileStat.st_mode)) ? "d" : "-");
-			printf( (fileStat.st_mode & S_IRUSR) ? "r" : "-");
-			printf( (fileStat.st_mode & S_IWUSR) ? "w" : "-");
-			printf( (fileStat.st_mode & S_IXUSR) ? "x" : "-");
-			printf( (fileStat.st_mode & S_IRGRP) ? "r" : "-");
-			printf( (fileStat.st_mode & S_IWGRP) ? "w" : "-");
-			printf( (fileStat.st_mode & S_IXGRP) ? "x" : "-");
-			printf( (fileStat.st_mode & S_IROTH) ? "r" : "-");
-			printf( (fileStat.st_mode & S_IWOTH) ? "w" : "-");
-			printf( (fileStat.st_mode & S_IXOTH) ? "x" : "-");
-			
-			//prints filename	
-			printf(" %s\n", dir->d_name);
-		}
-		closedir(d);
-	}
+  int k;
+  for (k = 1; k < argc; k++) {
+    // File is absolute
+    if(argv[k][0] == '/') {
+      file = malloc(sizeof(argv[k]));
+      file = strdup(argv[k]);
+    }
+    // File is relative 
+    else {
+      home = passwd->pw_dir;
+      //concat the homedirectory to argv[k]
+      file = malloc(sizeof(home) + 1 + sizeof(argv[k]));
+      strcat(file, home);
+      strcat(file, "/");
+      strcat(file, argv[k]);      
+    }
+    /* fetch inode information */
+    if (stat(file, &buf) == (-1)) {
+      fprintf(stderr, "%s: cannot access %s\n",
+                       argv[0], argv[k]);
+      exit(1);
+    }
+
+    printf("%s\n", file);
+
+    /* print file permissions */
+    if(uid == buf.st_uid) {
+      printf("File owner:\n"); 
+      if(buf.st_mode & 0400) {
+        printf("\tRead permission.\n");
+      }
+      if(buf.st_mode & 0200) {
+        printf("\tWrite permission.\n");
+      }
+      if(buf.st_mode & 0100) {
+        printf("\tExecute permission.\n");
+      }
+    }
+    else if(gid == buf.st_gid) {
+      printf("Group:\n");
+      if(buf.st_mode & 0040) {
+        printf("\tRead permission.\n");
+      }
+      if(buf.st_mode & 0020) {
+        printf("\tWrite permission.\n");
+      }
+      if(buf.st_mode & 0010) {
+        printf("\tExecute permission.\n");
+      }
+
+    }
+    else {
+      printf("Other\n");
+      if(buf.st_mode & 0004) {
+        printf("\tRead permission.\n");
+      }
+      if(buf.st_mode & 0002) {
+        printf("\tWrite permission.\n");
+      }
+      if(buf.st_mode & 0001) {
+        printf("\tExecute permission.\n");
+      }
+    }    
+  }
+  free(file);
+  exit(0);
 }
